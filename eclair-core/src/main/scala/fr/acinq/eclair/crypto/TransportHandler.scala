@@ -8,6 +8,7 @@ import akka.util.ByteString
 import fr.acinq.bitcoin.Crypto.PublicKey
 import fr.acinq.bitcoin.{BinaryData, Protocol}
 import fr.acinq.eclair.crypto.Noise._
+import fr.acinq.eclair.wire.PreSerialized
 import fr.acinq.eclair.wire.{ChannelAnnouncement, ChannelUpdate, NodeAnnouncement}
 import scodec.bits.BitVector
 import scodec.{Attempt, Codec, DecodeResult}
@@ -172,7 +173,10 @@ class TransportHandler[T: ClassTag](keyPair: KeyPair, rs: Option[BinaryData], co
 
     case Event(WriteAck, d: NormalData[T]) =>
       def send(t: T) = {
-        val blob = codec.encode(t).require.toByteArray
+        val blob = t match {
+          case p: PreSerialized => p.toBin
+          case _ => BinaryData(codec.encode(t).require.toByteArray)
+        }
         val (enc1, ciphertext) = d.encryptor.encrypt(blob)
         connection ! Tcp.Write(buf(ciphertext), WriteAck)
         enc1

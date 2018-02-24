@@ -19,6 +19,8 @@ sealed trait RoutingMessage extends LightningMessage
 sealed trait HasTemporaryChannelId extends LightningMessage { def temporaryChannelId: BinaryData } // <- not in the spec
 sealed trait HasChannelId extends LightningMessage { def channelId: BinaryData } // <- not in the spec
 sealed trait UpdateMessage extends HtlcMessage // <- not in the spec
+
+sealed trait PreSerialized { def toBin: BinaryData } // caches serialization
 // @formatter:on
 
 case class Init(globalFeatures: BinaryData,
@@ -135,7 +137,10 @@ case class ChannelAnnouncement(nodeSignature1: BinaryData,
                                nodeId1: PublicKey,
                                nodeId2: PublicKey,
                                bitcoinKey1: PublicKey,
-                               bitcoinKey2: PublicKey) extends RoutingMessage
+                               bitcoinKey2: PublicKey) extends RoutingMessage with PreSerialized {
+  lazy val bin = BinaryData(LightningMessageCodecs.lightningMessageCodec.encode(this).require.toByteArray)
+  override def toBin: BinaryData = bin
+}
 
 case class Color(r: Byte, g: Byte, b: Byte) {
   override def toString: String = f"#$r%02x$g%02x$b%02x" // to hexa s"#  ${r}%02x ${r & 0xFF}${g & 0xFF}${b & 0xFF}"
@@ -148,7 +153,10 @@ case class NodeAnnouncement(signature: BinaryData,
                             rgbColor: Color,
                             alias: String,
                             // TODO: check address order + support padding data (type 0)
-                            addresses: List[InetSocketAddress]) extends RoutingMessage
+                            addresses: List[InetSocketAddress]) extends RoutingMessage with PreSerialized {
+  lazy val bin = BinaryData(LightningMessageCodecs.lightningMessageCodec.encode(this).require.toByteArray)
+  override def toBin: BinaryData = bin
+}
 
 case class ChannelUpdate(signature: BinaryData,
                          chainHash: BinaryData,
@@ -158,7 +166,10 @@ case class ChannelUpdate(signature: BinaryData,
                          cltvExpiryDelta: Int,
                          htlcMinimumMsat: Long,
                          feeBaseMsat: Long,
-                         feeProportionalMillionths: Long) extends RoutingMessage
+                         feeProportionalMillionths: Long) extends RoutingMessage with PreSerialized {
+  lazy val bin = BinaryData(LightningMessageCodecs.lightningMessageCodec.encode(this).require.toByteArray)
+  override def toBin: BinaryData = bin
+}
 
 case class PerHopPayload(channel_id: Long,
                          amtToForward: Long,
